@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PopUp Studio — Biblical Story Videos</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #13100a;
+    --bg2: #1e1710;
+    --bg3: #2a2015;
+    --border: #4a3820;
+    --gold: #c4903c;
+    --gold-light: #e8c070;
+    --text: #e8d9b8;
+    --text-muted: #a08860;
+    --text-dim: #6a5838;
+    --red: #c45050;
+    --green: #50a870;
+  }
+  body { background: var(--bg); color: var(--text); font-family: Georgia, serif; min-height: 100vh; }
+
+  /* Header */
+  header { text-align: center; padding: 32px 24px 24px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 28px; font-weight: 400; color: var(--gold-light); letter-spacing: 0.06em; margin-bottom: 6px; }
+  header p { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 480px 1fr; gap: 0; max-width: 1400px; margin: 0 auto; min-height: calc(100vh - 120px); }
+  @media (max-width: 1000px) { .app { grid-template-columns: 1fr; } }
+
+  /* Left panel */
+  .panel-left { border-right: 1px solid var(--border); padding: 24px; overflow-y: auto; }
+  .panel-right { padding: 24px; }
+
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 14px; }
+
+  /* Story input */
+  .story-input-wrap { position: relative; }
+  textarea.story-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: Georgia, serif; font-size: 15px; line-height: 1.6;
+    padding: 14px; resize: vertical; min-height: 120px; outline: none; transition: border-color 0.15s;
+  }
+  textarea.story-input:focus { border-color: var(--gold); }
+  textarea.story-input::placeholder { color: var(--text-dim); font-style: italic; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+  .btn {
+    padding: 10px 18px; border-radius: 7px; border: none; font-family: Georgia, serif;
+    font-size: 14px; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.03em;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-ghost { background: var(--bg3); border: 1px solid var(--border); color: var(--text-muted); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--gold); color: var(--text); }
+  .btn-primary { background: linear-gradient(135deg, #7a5228, var(--gold)); color: #fff8e8; flex: 1; font-size: 16px; padding: 13px; }
+  .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+  .btn-download { background: var(--green); color: white; width: 100%; margin-top: 12px; font-size: 15px; padding: 13px; display: none; }
+
+  /* Voice picker */
+  .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 220px; overflow-y: auto; }
+  .voice-btn {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-family: Georgia, serif; font-size: 12px;
+    padding: 8px 10px; cursor: pointer; text-align: left; transition: all 0.15s;
+  }
+  .voice-btn:hover { border-color: var(--gold); color: var(--text); }
+  .voice-btn.active { border-color: var(--gold) !important; color: var(--gold-light) !important; background: var(--bg3) !important; }
+  .voice-name { font-weight: 500; display: block; }
+  .voice-meta { font-size: 10px; color: var(--text-dim); font-style: italic; }
+  .voice-btn.active .voice-meta { color: var(--text-muted); }
+
+  /* Model + format selectors */
+  .option-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .option-btn {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-family: Georgia, serif; font-size: 12px;
+    padding: 7px 12px; cursor: pointer; transition: all 0.15s; flex: 1; text-align: center;
+  }
+  .option-btn:hover { border-color: var(--gold); color: var(--text); }
+  .option-btn.active { border-color: var(--gold) !important; color: var(--gold-light) !important; background: var(--bg3) !important; }
+
+  /* Progress */
+  .progress-wrap { display: none; }
+  .progress-step { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .progress-step:last-child { border-bottom: none; }
+  .step-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; background: var(--bg3); border: 1px solid var(--border); }
+  .step-icon.done { background: var(--green); border-color: var(--green); color: white; }
+  .step-icon.active { border-color: var(--gold); color: var(--gold); animation: pulse 1.2s ease-in-out infinite; }
+  .step-icon.error { background: var(--red); border-color: var(--red); color: white; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* Right panel: story preview + page viewer */
+  .story-title { font-size: 20px; color: var(--gold-light); font-weight: 400; margin-bottom: 6px; }
+  .voiceover-preview { font-size: 13px; color: var(--text-muted); font-style: italic; line-height: 1.7; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; max-height: 120px; overflow-y: auto; }
+
+  /* Scene cards */
+  .scenes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .scene-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .scene-img-wrap { position: relative; aspect-ratio: 16/9; background: var(--bg3); overflow: hidden; }
+  .scene-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .scene-img.loaded { display: block; }
+  .scene-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; opacity: 0.3; }
+  .scene-spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; display: none; }
+  .spinner-ring { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scene-info { padding: 10px 12px; }
+  .scene-num { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .scene-title { font-size: 13px; color: var(--text); margin-top: 2px; }
+  .scene-duration { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Page-turn preview */
+  .preview-wrap { display: none; margin-bottom: 20px; }
+  .book-viewer {
+    perspective: 1200px;
+    width: 100%;
+    aspect-ratio: 16/9;
+    position: relative;
+    background: #0a0806;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .book-page {
+    position: absolute; inset: 0;
+    transform-style: preserve-3d;
+    transition: none;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .book-page img { width: 100%; height: 100%; object-fit: cover; }
+  .book-page.flipping {
+    animation: pageFlip 0.8s ease-in-out forwards;
+  }
+  @keyframes pageFlip {
+    0% { transform: rotateY(0deg); opacity: 1; }
+    50% { transform: rotateY(-90deg) scaleX(0.1); opacity: 0.3; }
+    51% { transform: rotateY(90deg) scaleX(0.1); opacity: 0.3; }
+    100% { transform: rotateY(0deg); opacity: 1; }
+  }
+  .page-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+  .page-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; transition: background 0.2s; }
+  .page-dot.active { background: var(--gold); }
+  .page-hint { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 6px; font-style: italic; }
+
+  /* Video player */
+  .video-wrap { display: none; margin-bottom: 16px; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+
+  /* Empty state */
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--text-dim); text-align: center; gap: 12px; }
+  .empty-icon { font-size: 56px; opacity: 0.3; }
+  .empty-state p { font-size: 15px; }
+  .empty-state small { font-size: 12px; font-style: italic; }
+
+  /* Error */
+  .error-msg { background: #2a1010; border: 1px solid #6a2020; border-radius: 6px; padding: 12px; color: #e07070; font-size: 13px; margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✦ PopUp Studio ✦</h1>
+  <p>Turn any story idea into a biblical pop-up book video</p>
+</header>
+
+<div class="app">
+
+  <!-- LEFT PANEL: Controls -->
+  <div class="panel-left">
+
+    <div class="card">
+      <div class="card-title">Your Story Idea</div>
+      <div class="story-input-wrap">
+        <textarea class="story-input" id="story-input" placeholder="Type your story idea here... e.g. 'The story of David and Goliath showing how courage and faith can overcome any giant in our lives'" rows="5"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="polish-btn" onclick="polishStory()">✨ Polish with AI</button>
+      </div>
+      <div class="error-msg" id="story-error"></div>
+    </div>
+
+    <div class="card" id="voice-card">
+      <div class="card-title">Narrator Voice</div>
+      <div class="voice-grid" id="voice-grid">
+        <div style="color:var(--text-dim);font-size:13px;font-style:italic;grid-column:1/-1">Loading voices...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Image Model</div>
+      <div class="option-row" id="model-select">
+        <button class="option-btn active" data-model="runware:100@1" onclick="selectModel(this)">FLUX.1 Dev<br><small style="font-size:10px;opacity:0.6">Quality ~15s</small></button>
+        <button class="option-btn" data-model="runware:5@1" onclick="selectModel(this)">FLUX Schnell<br><small style="font-size:10px;opacity:0.6">Fastest ~4s</small></button>
+        <button class="option-btn" data-model="civitai:618692@691639" onclick="selectModel(this)">Juggernaut<br><small style="font-size:10px;opacity:0.6">Rich detail</small></button>
+      </div>
+    </div>
+
+    <div class="card" id="progress-card" style="display:none">
+      <div class="card-title">Generation Progress</div>
+      <div class="progress-wrap" id="progress-wrap" style="display:block">
+        <div class="progress-step" id="step-story">
+          <div class="step-icon" id="icon-story">1</div>
+          <span id="label-story">Writing story & scenes...</span>
+        </div>
+        <div class="progress-step" id="step-images">
+          <div class="step-icon" id="icon-images">2</div>
+          <span id="label-images">Generating scene images...</span>
+        </div>
+        <div class="progress-step" id="step-audio">
+          <div class="step-icon" id="icon-audio">3</div>
+          <span id="label-audio">Recording voiceover...</span>
+        </div>
+        <div class="progress-step" id="step-video">
+          <div class="step-icon" id="icon-video">4</div>
+          <span id="label-video">Rendering video...</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="create-btn" onclick="createVideo()">✦ Create Pop-Up Video ✦</button>
+    <div class="error-msg" id="create-error"></div>
+
+    <button class="btn btn-download" id="download-btn" onclick="downloadVideo()">↓ Download MP4</button>
+
+  </div>
+
+  <!-- RIGHT PANEL: Preview -->
+  <div class="panel-right">
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">📖</div>
+      <p>Your pop-up book will come to life here</p>
+      <small>Enter a story idea and click Create</small>
+    </div>
+
+    <div id="story-preview" style="display:none">
+      <h2 class="story-title" id="preview-title"></h2>
+      <div class="voiceover-preview" id="preview-voiceover"></div>
+
+      <!-- Page-turn preview -->
+      <div class="preview-wrap" id="preview-wrap">
+        <div class="book-viewer" id="book-viewer" onclick="nextPage()">
+          <div class="book-page" id="book-page">
+            <img id="current-page-img" src="" alt="Scene" />
+          </div>
+        </div>
+        <div class="page-controls" id="page-dots"></div>
+        <div class="page-hint">Click to turn the page</div>
+      </div>
+
+      <!-- Scene grid -->
+      <div class="scenes-grid" id="scenes-grid"></div>
+
+      <!-- Video player -->
+      <div class="video-wrap" id="video-wrap">
+        <video id="video-player" controls playsinline></video>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let state = {
+  selectedVoiceId: null,
+  selectedModel: 'runware:100@1',
+  story: null,
+  images: [],
+  audioFile: null,
+  jobId: null,
+  videoUrl: null,
+  currentPage: 0
+}
+
+// ── Init ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', loadVoices)
+
+async function loadVoices() {
+  try {
+    const res = await fetch('/api/voices')
+    const data = await res.json()
+    const grid = document.getElementById('voice-grid')
+    if (!data.voices?.length) { grid.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No voices found</div>'; return }
+
+    grid.innerHTML = ''
+    data.voices.slice(0, 20).forEach(v => {
+      const btn = document.createElement('button')
+      btn.className = 'voice-btn'
+      btn.dataset.voiceId = v.id
+      btn.innerHTML = `<span class="voice-name">${v.name}</span><span class="voice-meta">${[v.gender, v.age, v.accent].filter(Boolean).join(' · ')}</span>`
+      btn.onclick = () => selectVoice(btn, v.id)
+      grid.appendChild(btn)
+    })
+  } catch (e) {
+    document.getElementById('voice-grid').innerHTML = '<div style="color:var(--text-dim);font-size:13px;font-style:italic">Could not load voices</div>'
+  }
+}
+
+function selectVoice(btn, id) {
+  document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  state.selectedVoiceId = id
+}
+
+function selectModel(btn) {
+  document.querySelectorAll('#model-select .option-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  state.selectedModel = btn.dataset.model
+}
+
+// ── Polish ────────────────────────────────────────────
+async function polishStory() {
+  const input = document.getElementById('story-input')
+  const btn = document.getElementById('polish-btn')
+  if (!input.value.trim()) return
+
+  btn.disabled = true
+  btn.textContent = '✨ Polishing...'
+  hideError('story-error')
+
+  try {
+    const res = await fetch('/api/story/polish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea: input.value })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    input.value = data.polished
+  } catch (e) {
+    showError('story-error', e.message)
+  } finally {
+    btn.disabled = false
+    btn.textContent = '✨ Polish with AI'
+  }
+}
+
+// ── Create ────────────────────────────────────────────
+async function createVideo() {
+  const idea = document.getElementById('story-input').value.trim()
+  if (!idea) return showError('create-error', 'Please enter a story idea')
+  if (!state.selectedVoiceId) return showError('create-error', 'Please select a narrator voice')
+
+  hideError('create-error')
+  const createBtn = document.getElementById('create-btn')
+  createBtn.disabled = true
+  createBtn.textContent = '✦ Creating...'
+  document.getElementById('progress-card').style.display = 'block'
+  document.getElementById('download-btn').style.display = 'none'
+  document.getElementById('empty-state').style.display = 'none'
+  document.getElementById('story-preview').style.display = 'none'
+
+  try {
+    // STEP 1: Generate story
+    setStep('story', 'active', 'Writing story & scenes...')
+    const storyRes = await fetch('/api/story/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea, style: 'warm, wonder-filled, age 4-10' })
+    })
+    const storyData = await storyRes.json()
+    if (!storyRes.ok) throw new Error(storyData.error)
+    state.story = storyData.story
+    state.jobId = Date.now().toString()
+    setStep('story', 'done', `Story ready: "${state.story.title}"`)
+
+    // Show story preview immediately
+    showStoryPreview(state.story)
+
+    // STEP 2: Generate images
+    setStep('images', 'active', 'Generating 5 scene images...')
+    const imgRes = await fetch('/api/images/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenes: state.story.scenes,
+        model: state.selectedModel,
+        jobId: state.jobId
+      })
+    })
+    const imgData = await imgRes.json()
+    if (!imgRes.ok) throw new Error(imgData.error)
+    state.images = imgData.images
+    updateSceneImages(state.images)
+    setStep('images', 'done', 'All scene images ready')
+
+    // STEP 3: Generate audio
+    setStep('audio', 'active', 'Recording voiceover...')
+    const audioRes = await fetch('/api/audio/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        script: state.story.voiceover,
+        voiceId: state.selectedVoiceId,
+        jobId: state.jobId
+      })
+    })
+    const audioData = await audioRes.json()
+    if (!audioRes.ok) throw new Error(audioData.error)
+    state.audioFile = audioData.audioFile
+    setStep('audio', 'done', 'Voiceover recorded')
+
+    // STEP 4: Render video
+    setStep('video', 'active', 'Rendering MP4 with page turns...')
+    const videoRes = await fetch('/api/video/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId: state.jobId,
+        images: state.images,
+        scenes: state.story.scenes,
+        audioFile: state.audioFile,
+        title: state.story.title
+      })
+    })
+    const videoData = await videoRes.json()
+    if (!videoRes.ok) throw new Error(videoData.error)
+    state.videoUrl = videoData.videoUrl
+    setStep('video', 'done', 'Video ready!')
+
+    // Show video player
+    showVideo(state.videoUrl)
+    document.getElementById('download-btn').style.display = 'block'
+
+  } catch (e) {
+    showError('create-error', e.message)
+    console.error(e)
+  } finally {
+    createBtn.disabled = false
+    createBtn.textContent = '✦ Create Pop-Up Video ✦'
+  }
+}
+
+// ── UI helpers ────────────────────────────────────────
+function showStoryPreview(story) {
+  document.getElementById('story-preview').style.display = 'block'
+  document.getElementById('preview-title').textContent = story.title
+  document.getElementById('preview-voiceover').textContent = story.voiceover
+
+  // Build scene cards (images loading)
+  const grid = document.getElementById('scenes-grid')
+  grid.innerHTML = ''
+  story.scenes.forEach(scene => {
+    const card = document.createElement('div')
+    card.className = 'scene-card'
+    card.id = `scene-card-${scene.id}`
+    card.innerHTML = `
+      <div class="scene-img-wrap">
+        <div class="scene-placeholder">📖</div>
+        <div class="scene-spinner" id="spinner-${scene.id}"><div class="spinner-ring"></div></div>
+        <img class="scene-img" id="scene-img-${scene.id}" alt="Scene ${scene.id}" />
+      </div>
+      <div class="scene-info">
+        <div class="scene-num">Scene ${scene.id}</div>
+        <div class="scene-title">${scene.title}</div>
+        <div class="scene-duration">${scene.duration}s · ${scene.voiceover_segment.substring(0, 60)}...</div>
+      </div>`
+    grid.appendChild(card)
+    document.getElementById(`spinner-${scene.id}`).style.display = 'flex'
+  })
+}
+
+function updateSceneImages(images) {
+  const loaded = []
+  images.forEach(img => {
+    if (!img.imageURL) return
+    const el = document.getElementById(`scene-img-${img.sceneId}`)
+    const spinner = document.getElementById(`spinner-${img.sceneId}`)
+    if (el) {
+      el.src = img.imageURL
+      el.onload = () => { el.classList.add('loaded'); if (spinner) spinner.style.display = 'none' }
+    }
+    loaded.push(img.imageURL)
+  })
+
+  // Set up page-turn preview
+  if (loaded.length > 0) {
+    state.pageImages = loaded
+    state.currentPage = 0
+    setupPageViewer(loaded)
+  }
+}
+
+function setupPageViewer(images) {
+  const preview = document.getElementById('preview-wrap')
+  const dotsEl = document.getElementById('page-dots')
+  preview.style.display = 'block'
+
+  document.getElementById('current-page-img').src = images[0]
+
+  dotsEl.innerHTML = ''
+  images.forEach((_, i) => {
+    const dot = document.createElement('div')
+    dot.className = 'page-dot' + (i === 0 ? ' active' : '')
+    dot.onclick = () => goToPage(i)
+    dotsEl.appendChild(dot)
+  })
+}
+
+function nextPage() {
+  if (!state.pageImages || state.pageImages.length < 2) return
+  const next = (state.currentPage + 1) % state.pageImages.length
+  goToPage(next)
+}
+
+function goToPage(index) {
+  if (index === state.currentPage) return
+  const page = document.getElementById('book-page')
+  const img = document.getElementById('current-page-img')
+
+  page.classList.add('flipping')
+  setTimeout(() => {
+    img.src = state.pageImages[index]
+    state.currentPage = index
+    page.classList.remove('flipping')
+    document.querySelectorAll('.page-dot').forEach((d, i) => d.classList.toggle('active', i === index))
+  }, 400)
+}
+
+function showVideo(url) {
+  const wrap = document.getElementById('video-wrap')
+  const player = document.getElementById('video-player')
+  wrap.style.display = 'block'
+  player.src = url
+  player.play().catch(() => {})
+}
+
+function downloadVideo() {
+  if (!state.videoUrl) return
+  const a = document.createElement('a')
+  a.href = state.videoUrl
+  a.download = `${state.story?.title || 'popup-story'}.mp4`
+  a.click()
+}
+
+function setStep(step, status, label) {
+  const icon = document.getElementById(`icon-${step}`)
+  const labelEl = document.getElementById(`label-${step}`)
+  icon.className = `step-icon ${status}`
+  icon.textContent = status === 'done' ? '✓' : status === 'error' ? '✕' : icon.textContent
+  if (label) labelEl.textContent = label
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id)
+  el.textContent = '⚠ ' + msg
+  el.style.display = 'block'
+}
+
+function hideError(id) {
+  document.getElementById(id).style.display = 'none'
+}
+</script>
+</body>
+</html>
